@@ -73,11 +73,11 @@ def loop_reg(feature_train, target_train, feature_test, target_test,max_depth=6,
         else:
             ar=do_xgb_class(feature_train, target_train, feature_test, target_test,max_depth=max_depth,reg=regularization,silent=silent)
         resb[:,i]=ar
-        #saved at each step because it sometimes crashes 
-        if Save==True:
-            np.savetxt(file_name, resb) 
-        else:
-            return resb
+    #saved now only at the end seems stable enough now
+    if Save==True:
+        np.savetxt(file_name, resb) 
+    else:
+        return resb
         
 #2 grid in l2regularziation and max depth
 #parameters: feature of train, target of train, feature of test, target of test,
