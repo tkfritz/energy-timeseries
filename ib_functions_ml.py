@@ -365,3 +365,137 @@ def cross_fold_apply(features,target,folds,other_feature,seed=None,max_depth=2,r
     else:   
         return res
     
+#parameters are: 
+#data_frame, number of data points used for prediction, number of data points ignored between data and target, nan excluding
+def series_to_supervised(data, n_in=1, offset=0, dropnan=True):
+    #create empty data frame and list
+    df = pd.DataFrame(data)
+    cols = list()
+    # input sequence (t-n, ... t-1)
+    for i in range(n_in, 0, -1):
+        cols.append(df.shift(i))
+    # forecast sequence (t+offset)
+    for i in range(offset, 1+offset):
+        cols.append(df.shift(-i))
+    # connecting all 
+    agg = pd.concat(cols, axis=1)
+    # drop rows with NaN values
+    if dropnan:
+        agg.dropna(inplace=True)
+    return agg.values
+
+#parameters, data, min time pred period in hours/4-1/4, max-min time pred peiod in hours/4-1/4, predictining over how many data_points
+#steps in test, model shortcut used, name of file for output
+def predict_intervall(df,a,b,c,d,model,output):
+    resf=np.zeros((4,b))
+    #valid_modelchecks whether model is called
+    valid_model=False
+    if model=="xgb" or model=="xgboost":
+        xmodel3=XGBRegressor()
+        print("running XGBoost")
+        valid_model=True
+    if model=="lin" or model=='linear':
+        xmodel3=LinearRegression()
+        print("running Linear Regression")
+        valid_model=True
+    if valid_model==True:
+        for i in range(int(a), int(b+a)):
+            print(f"running prediction over {(i+1)*15} minutes")
+            #convert to supervised data format
+            res3=series_to_supervised(df.total_power,c,i)
+            res3=pd.DataFrame(res3)
+            #split in test and train
+            dataa3_train = res3.iloc[:-d,:]
+            dataa3_test  = res3.iloc[-d:,:]
+            x3_train=dataa3_train.iloc[:,:c]
+            x3_test=dataa3_test.iloc[:,:c]
+            y3_train=dataa3_train.iloc[:,c]
+            y3_test=dataa3_test.iloc[:,c]
+            #time scale of prediction
+            resf[0,i-int(a)]=15*(i+1)
+            #fit and predict
+            xmodel3.fit(x3_train,y3_train)
+            pred3=xmodel3.predict(x3_test)
+            #standard deviation of prediction
+            resf[2,i-int(a)]=np.std(pred3-y3_test)
+            #compare with shift
+            diff6=y3_test.shift(periods=i+1)           
+            resf[1,i-int(a)]=np.std(diff6-y3_test)
+            #mean value to get percentage
+            resf[3,i-int(a)]=np.mean(y3_test)
+    else:
+        print("no implemented model called")
+    np.savetxt(output,resf)
+    
+#quadrtyic logarithm
+def log_quat(x,a,b,c):
+    return a+b*np.log10(x)+c*np.log10(x)**2    
+
+def dev_quat(a,b,c):
+    return -b/(2*c)
+ 
+def find_best(dat,delta=3):
+    min_p=np.argmin(dat[3])
+    est=np.zeros((3))
+    print(dat[0,min_p])
+    print(dat[0:4,min_p-delta:min_p+delta])
+    if min_p-delta>=0:
+        val,cov=sp.optimize.curve_fit(log_quat,dat[0,min_p-delta:min_p+delta],dat[3,min_p-delta:min_p+delta],p0=est)
+    else:
+        val,cov=sp.optimize.curve_fit(log_quat,dat[0,0:min_p+delta],dat[3,0:min_p+delta],p0=est)
+    print(val)
+    min_p1=10**dev_quat(val[0],val[1],val[2])
+    return min_p1
+    
+#parameters data frame, gap to wanted prediction
+def find_fit_best_reg(df,gap,now_points=1,test_frac=0.8,max_depth=4,reg_start=0.001,reg_increase=1.414,reg_steps=4,delta=4,filename=None,save=True):
+    ser=series_to_supervised(df.total_power,now_points,gap)
+    df_ser=pd.DataFrame(ser,columns=["now","to_predict"])
+    df_ser.loc[:,'frac_day']=df.loc[0:df_ser.shape[0],'frac_day']
+    df_ser.loc[:,'frac_week']=df.loc[0:df_ser.shape[0],'frac_week']
+    df_ser.loc[:,'frac_year']=df.loc[0:df_ser.shape[0],'frac_year']
+    print(df_ser.shape)
+    print(df_ser.columns)
+    frac1=int(df_ser.shape[0]*0.8)
+    print(frac1)
+    ser_train=df_ser.iloc[:frac1,:]
+    ser_test=df_ser.iloc[frac1:,:]
+    print(reg_steps)
+    stat_reg=loop_reg(ser_train.loc[:,['now','frac_day', 'frac_week', 'frac_year']],ser_train.to_predict,ser_test.loc[:,['now','frac_day', 'frac_week', 'frac_year']],ser_test.to_predict,max_depth=max_depth,reg_start=reg_start,reg_increase=reg_increase,reg_steps=reg_steps,Save=False,regression=True,silent=False)
+    print(stat_reg)
+    best_reg=find_best(stat_reg,delta=delta)
+    xmodel=XGBRegressor(alpha=best_reg).fit(df_ser.loc[:,['now','frac_day', 'frac_week', 'frac_year']],df_ser.loc[:,'to_predict'])
+    if save==True:
+        xmodel.save_model(filename)
+    else:
+        return xmodel
+
+def fit_many_gaps(df,gap_start=1,gap_steps=2,now_points=1,test_frac=0.8,max_depth=4,reg_start=0.001,reg_increase=1.414,reg_steps=4,delta=4,filename=None,save=True):
+    for i in range(gap_steps):
+        gap=gap_start+i
+        print(gap)
+        if gap<10:
+            filename="xgb_model_00"+str(gap)+".json"
+        elif gap<100:
+            filename="xgb_model_0"+str(gap)+".json"
+        elif gap<1000:
+            filename="xgb_model_"+str(gap)+".json"            
+        find_fit_best_reg(df,gap,now_points=now_points,test_frac=test_frac,max_depth=max_depth,reg_start=reg_start,reg_increase=reg_increase,reg_steps=reg_steps,delta=delta,filename=filename,save=True)
+        
+#parameters, most recent features, list of model,delta ts, standard is just every 0.25 h from models
+def predict_from_now(data,models,deltas=None):
+    print(data)
+    if deltas==None:
+        deltas=np.zeros((len(models)))
+        for i in range(len(models)):
+            deltas[i]=0.25+i/4
+    res=np.zeros((3,len(models)))  
+    res[0,:]=deltas
+    for i in range(len(models)):
+        print(i)
+        xmodel=XGBRegressor()
+        xmodel.load_model(models[i])
+        #predict needs more than 1 data point to work 
+        res[1,i]=xmodel.predict(data)[-1]
+    #need better column names at some points in a data frame     
+    return res           
