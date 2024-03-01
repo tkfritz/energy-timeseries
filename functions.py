@@ -504,5 +504,5 @@ def predict_from_now(data,models,deltas=None,silent=False):
     #make data frame 
     df=pd.DataFrame(res.T,columns=['hours','consumption','error'])
     for i in range(df.shape[0]):
-        df.loc[i,'date_time']=data.loc[comb_real_power.shape[0]-1,'date_time']+timedelta(hours=df['hours'][i])
+        df.loc[i,'date_time']=data.loc[data.shape[0]-1,'date_time']+timedelta(hours=df['hours'][i])
     return res           
