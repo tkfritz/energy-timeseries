@@ -505,3 +505,63 @@ def predict_from_now(data,models,deltas=None,silent=False):
     for i in range(df.shape[0]):
         df.loc[i,'date_time']=data.iloc[data.shape[0]-1,data.shape[1]-1]+timedelta(hours=df['hours'][i])
     return df           
+
+def transform_projected(df):
+    dic2b={'Datum':'Date','Anfang':'Time','Gesamt (Netzlast) [MWh] Originalauflösungen':'total_power_pred','Residuallast [MWh] Originalauflösungen':'residual_power_pred'}
+    df.rename(columns=dic2b,inplace=True)
+    #drop columns  not there anymore
+    #df.drop(['Ende'], axis=1, inplace=True)
+    #cpnvert german float to english 
+    df['residual_power_pred'] = df['residual_power_pred'].str.replace('.','')
+    df['residual_power_pred'] = df['residual_power_pred'].str.replace(',','.').astype(float)/1000.
+    df['total_power_pred'] = df['total_power_pred'].str.replace('.','')
+    df['total_power_pred'] = df['total_power_pred'].str.replace(',','.').astype(float)/1000.
+    #somehow below is not anymore there
+    #df['pump_storage_pred'] = df['pump_storage_pred'].str.replace('.','')
+    #df['pump_storage_pred'] = df['pump_storage_pred'].str.replace(',','.').astype(float)/1000.
+    df['date_time']=pd.to_datetime(df['Date'] + '.' + df['Time'], format='%d.%m.%Y.%H:%M')
+    return df
+
+
+def prepare_input(df,pump=False,end=False):
+    #zero time of model can change later
+    zero=datetime(2015, 1, 1, 0, 0)
+    dic2={'Datum':'Date','Anfang':'Time','Gesamt (Netzlast) [MWh] Originalauflösungen':'total_power','Residuallast [MWh] Originalauflösungen':'residual_power','Pumpspeicher [MWh] Originalauflösungen':'pump_storage'}
+    df.rename(columns=dic2,inplace=True)
+    #drop columns
+    if end==True:
+        df.drop(['Ende'], axis=1, inplace=True)
+    #cpnvert german float to english 
+    df['residual_power'] = df['residual_power'].str.replace('.','')
+    df['residual_power'] = df['residual_power'].str.replace('-','0')
+    df['residual_power'] = df['residual_power'].str.replace(',','.').astype(float)/1000.
+    df['total_power'] = df['total_power'].str.replace('.','')
+    df['total_power'] = df['total_power'].str.replace('-','0')    
+    df['total_power'] = df['total_power'].str.replace(',','.').astype(float)/1000.
+    if pump==True:
+        df['pump_storage'] = df['pump_storage'].str.replace('.','')
+        df['pump_storage'] = df['pump_storage'].str.replace(',','.').astype(float)/1000.
+    df['date_time']=pd.to_datetime(df['Date'] + '.' + df['Time'], format='%d.%m.%Y.%H:%M')
+    delta=str(df.loc[0,'date_time']-zero)
+    #deltam=time.strftime(delta,'%M')
+    days=delta.split(' days ')
+    hour=days[1].split(':')
+    #difference in fraction of days
+    diff_frac=float(days[0])+float(hour[0])/24+float(hour[1])/24/60
+    time1=np.zeros((df.shape[0],5))
+    for i in range(df.shape[0]):
+        time1[i,0]=diff_frac+i/4/24
+        time1[i,1]=time1[i,0]%1
+        time1[i,2]=(time1[i,0]%7)/7
+        time1[i,3]=(time1[i,0]%365.25)/365.25
+        time1[i,4]=i/4/24/365.25      
+    df['frac_day']=time1[:,1]
+    df['frac_week']=time1[:,2]
+    df['frac_year']=time1[:,3]
+    #works at least for full days, later more checks 
+    #exclude what is zero at the end
+    c=0
+    while df.loc[df.shape[0]+c-1,'total_power']==0:
+        c-=1
+    #return of the the needed columns in the right order 
+    return df.loc[:df.shape[0]+c-1,['total_power','frac_day', 'frac_week', 'frac_year','date_time']]
