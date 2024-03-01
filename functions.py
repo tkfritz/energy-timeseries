@@ -3,8 +3,7 @@
 #libraries neded for it 
 import numpy as np
 import random as random
-import time
-import datetime 
+from datetime import date, time, datetime, timedelta
 import pandas as pd
 import scipy
 #for confidence intervalls
@@ -500,9 +499,9 @@ def predict_from_now(data,models,deltas=None,silent=False):
         xmodel=XGBRegressor()
         xmodel.load_model(models[i])
         #predict needs more than 1 data point to work 
-        res[1,i]=xmodel.predict(data)[-1]*4
+        res[1,i]=xmodel.predict(data.iloc[:,0:4])[-1]*4
     #make data frame 
     df=pd.DataFrame(res.T,columns=['hours','consumption','error'])
     for i in range(df.shape[0]):
-        df.loc[i,'date_time']=data.loc[data.shape[0]-1,'date_time']+timedelta(hours=df['hours'][i])
-    return res           
+        df.loc[i,'date_time']=data.iloc[data.shape[0]-1,data.shape[1]-1]+timedelta(hours=df['hours'][i])
+    return df           
