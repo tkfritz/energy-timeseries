@@ -484,7 +484,7 @@ def fit_many_gaps(df,gap_start=1,gap_steps=2,now_points=1,test_frac=0.8,max_dept
         find_fit_best_reg(df,gap,now_points=now_points,test_frac=test_frac,max_depth=max_depth,reg_start=reg_start,reg_increase=reg_increase,reg_steps=reg_steps,delta=delta,filename=filename,save=True)
         
 #parameters, most recent features, list of model,delta ts, standard is just every 0.25 h from models
-def predict_from_now(data,models,deltas=None,silent==False):
+def predict_from_now(data,models,deltas=None,silent=False):
     if silent==False:    
         print(data)
     if deltas==None:
