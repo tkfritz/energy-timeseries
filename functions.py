@@ -4,6 +4,7 @@
 import numpy as np
 import random as random
 import time
+import datetime 
 import pandas as pd
 import scipy
 #for confidence intervalls
@@ -489,6 +490,7 @@ def predict_from_now(data,models,deltas=None):
         deltas=np.zeros((len(models)))
         for i in range(len(models)):
             deltas[i]=0.25+i/4
+    #3 error to be added at some point        
     res=np.zeros((3,len(models)))  
     res[0,:]=deltas
     for i in range(len(models)):
@@ -496,6 +498,9 @@ def predict_from_now(data,models,deltas=None):
         xmodel=XGBRegressor()
         xmodel.load_model(models[i])
         #predict needs more than 1 data point to work 
-        res[1,i]=xmodel.predict(data)[-1]
-    #need better column names at some points in a data frame     
+        res[1,i]=xmodel.predict(data)[-1]*4
+    #make data frame 
+    df=pd.DataFrame(res.T,columns=['hours','consumption','error'])
+    for i in range(df.shape[0]):
+        df.loc[i,'date_time']=data.loc[comb_real_power.shape[0]-1,'date_time']+timedelta(hours=df['hours'][i])
     return res           
