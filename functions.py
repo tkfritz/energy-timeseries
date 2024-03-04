@@ -565,3 +565,31 @@ def prepare_input(df,pump=False,end=False):
         c-=1
     #return of the the needed columns in the right order 
     return df.loc[:df.shape[0]+c-1,['total_power','frac_day', 'frac_week', 'frac_year','date_time']]
+
+
+#plotting function 
+def plot_prediction(power_newest,prediction_newest):
+    plt.plot(power_newest['date_time'],(power_newest['total_power']*4),'-',ms=1,color='blue',label='observed')   
+    plt.plot(prediction_newest.date_time,prediction_newest.consumption,color='red',label='prediction')
+    plt.xlabel("date")
+    plt.ylabel("consumption [GW]") 
+    plt.legend(loc="best")
+    plt.title("current prediction")
+    max_t=prediction_newest.loc[prediction_newest.shape[0]-1,'date_time']+timedelta(days=1)
+    min_t=prediction_newest.loc[prediction_newest.shape[0]-1,'date_time']+timedelta(days=-2)
+    year_stop=max_t.year
+    month_stop=max_t.month
+    day_stop=max_t.day
+    year_start=min_t.year
+    month_start=min_t.month
+    day_start=min_t.day
+    plot_start = datetime(year_start, month_start, day_start)
+    min_pred=prediction_newest.consumption.min()
+    max_pred=prediction_newest.consumption.max()
+    power_sel=power_newest[(power_newest.date_time==plot_start)]
+    min_actual=4*power_newest[power_sel.index[0]:].total_power.min()
+    max_actual=4*power_newest[power_sel.index[0]:].total_power.max()
+    min_power=min(min_pred,min_actual)
+    max_power=max(max_pred,max_actual)
+    plt.xlim(datetime(year_start,month_start,day_start),datetime(year_stop,month_stop,day_stop))
+    plt.ylim(min_power*0.99,max_power*1.01)
