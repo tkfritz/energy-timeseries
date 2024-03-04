@@ -23,6 +23,8 @@ from sklearn.model_selection import train_test_split
 from pathlib import Path
 import os
 import pickle
+#matplotlib
+from matplotlib import pyplot as plt
 
 #returns fractions of wrong  predicted
 def perwrong(conf_matrix):
