@@ -595,3 +595,12 @@ def plot_prediction(power_newest,prediction_newest):
     max_power=max(max_pred,max_actual)
     plt.xlim(datetime(year_start,month_start,day_start),datetime(year_stop,month_stop,day_stop))
     plt.ylim(min_power*0.99,max_power*1.01)
+
+def find_data(start_x='xgb_model_',end_x='json',data='Realisierter_Stromverbrauch_',myPath='/home/tobias/ml-testing/energy/energy-timeseries'):
+    models=[f for f in os.listdir(myPath) 
+        if (f.startswith(start_x)) and  (f.endswith(end_x) )] 
+    models.sort()
+    data=[f for f in os.listdir(myPath) 
+        if (f.startswith(data))]
+    data.sort()          
+    return models, data
