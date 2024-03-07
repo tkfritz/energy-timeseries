@@ -484,8 +484,8 @@ def fit_many_gaps(df,gap_start=1,gap_steps=2,now_points=1,test_frac=0.8,max_dept
             filename="xgb_model_"+str(gap)+".json"            
         find_fit_best_reg(df,gap,now_points=now_points,test_frac=test_frac,max_depth=max_depth,reg_start=reg_start,reg_increase=reg_increase,reg_steps=reg_steps,delta=delta,filename=filename,save=True)
         
-#parameters, most recent features, list of model,delta ts, standard is just every 0.25 h from models
-def predict_from_now(data,models,deltas=None,silent=False):
+#parameters, most recent features, list of model,delta ts, standard is just every 0.25 h from models, delta, means whether start_time is reduced sometimes also point is bad 
+def predict_from_now(data,models,deltas=None,silent=False,delta=0):
     if silent==False:    
         print(data)
     if deltas==None:
@@ -501,17 +501,17 @@ def predict_from_now(data,models,deltas=None,silent=False):
         xmodel=XGBRegressor()
         xmodel.load_model(models[i])
         #predict needs more than 1 data point to work 
-        res[1,i]=xmodel.predict(data.iloc[:,0:4])[-1]*4
+        res[1,i]=xmodel.predict(data.iloc[:,0:4])[-1+delta]*4
     #make data frame 
     df=pd.DataFrame(res.T,columns=['hours','consumption','error'])
     for i in range(df.shape[0]):
-        df.loc[i,'date_time']=data.iloc[data.shape[0]-1,data.shape[1]-1]+timedelta(hours=df['hours'][i])
+        df.loc[i,'date_time']=data.iloc[data.shape[0]-1+delta,data.shape[1]-1]+timedelta(hours=df['hours'][i])
     #also write it that the predictions can be investiagted at some point
-    year=data.iloc[data.shape[0]-1,data.shape[1]-1].year
-    month=data.iloc[data.shape[0]-1,data.shape[1]-1].month    
-    day=data.iloc[data.shape[0]-1,data.shape[1]-1].day   
-    hour=data.iloc[data.shape[0]-1,data.shape[1]-1].hour    
-    minute=data.iloc[data.shape[0]-1,data.shape[1]-1].minute    
+    year=data.iloc[data.shape[0]-1+delta,data.shape[1]-1].year
+    month=data.iloc[data.shape[0]-1+delta,data.shape[1]-1].month    
+    day=data.iloc[data.shape[0]-1+delta,data.shape[1]-1].day   
+    hour=data.iloc[data.shape[0]-1+delta,data.shape[1]-1].hour    
+    minute=data.iloc[data.shape[0]-1+delta,data.shape[1]-1].minute    
     df.to_csv('prediction_'+str(year)+'_'+str(month)+'_'+str(day)+'_'+str(hour)+'_'+str(minute)+'.csv',sep=',')
     return df           
 
