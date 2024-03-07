@@ -506,6 +506,13 @@ def predict_from_now(data,models,deltas=None,silent=False):
     df=pd.DataFrame(res.T,columns=['hours','consumption','error'])
     for i in range(df.shape[0]):
         df.loc[i,'date_time']=data.iloc[data.shape[0]-1,data.shape[1]-1]+timedelta(hours=df['hours'][i])
+    #also write it that the predictions can be investiagted at some point
+    year=data.iloc[data.shape[0]-1,data.shape[1]-1].year
+    month=data.iloc[data.shape[0]-1,data.shape[1]-1].month    
+    day=data.iloc[data.shape[0]-1,data.shape[1]-1].day   
+    hour=data.iloc[data.shape[0]-1,data.shape[1]-1].hour    
+    minute=data.iloc[data.shape[0]-1,data.shape[1]-1].minute    
+    df.to_csv('prediction_'+str(year)+'_'+str(month)+'_'+str(day)+'_'+str(hour)+'_'+str(minute)+'.csv',sep=',')
     return df           
 
 def transform_projected(df):
