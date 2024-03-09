@@ -580,7 +580,7 @@ def prepare_input(df,pump=False,end=False,bad_cut=0.9):
     delta=0                   
     if df.loc[df.shape[0]+c-1,'total_power']/df.loc[df.shape[0]+c-2,'total_power']<bad_cut:
         delta=-1    
-    return df.loc[:df.shape[0]+c-1,['total_power','frac_day', 'frac_week', 'frac_year','date_time']], delta
+    return df.loc[:df.shape[0]+c-1+delta,['total_power','frac_day', 'frac_week', 'frac_year','date_time']]
 
 #plotting function 
 def plot_prediction(power_newest,prediction_newest):
@@ -617,3 +617,15 @@ def find_data(start_x='xgb_model_',end_x='json',data='Realisierter_Stromverbrauc
         if (f.startswith(data))]
     data.sort()          
     return models, data
+
+#piple to do the rest that code is not visisble to standard users 
+def pipeline_v1():
+    #get model and data file lists
+    models,data=find_data()
+    #last in list is newest 
+    new_real=pd.read_csv(data[-1],delimiter=';')
+    #prepocess including some data cleaning
+    power_newest=prepare_input(new_real)
+    #apply prediction
+    prediction_newest=predict_from_now(power_newest.loc[power_newest.shape[0]-3:power_newest.shape[0],:],models[:],silent=True)
+    plot_prediction(power_newest.iloc[:,:],prediction_newest)
