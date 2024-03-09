@@ -628,4 +628,5 @@ def pipeline_v1():
     power_newest=prepare_input(new_real)
     #apply prediction
     prediction_newest=predict_from_now(power_newest.loc[power_newest.shape[0]-3:power_newest.shape[0],:],models[:],silent=True)
+    #plot prediction
     plot_prediction(power_newest.iloc[:,:],prediction_newest)
