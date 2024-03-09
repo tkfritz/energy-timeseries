@@ -532,7 +532,7 @@ def transform_projected(df):
     return df
 
 
-def prepare_input(df,pump=False,end=False):
+def prepare_input(df,pump=False,end=False,bad_cut=0.9):
     #zero time of model can change later
     zero=datetime(2015, 1, 1, 0, 0)
     dic2={'Datum':'Date','Anfang':'Time','Gesamt (Netzlast) [MWh] Originalauflösungen':'total_power','Residuallast [MWh] Originalauflösungen':'residual_power','Pumpspeicher [MWh] Originalauflösungen':'pump_storage'}
@@ -572,9 +572,15 @@ def prepare_input(df,pump=False,end=False):
     c=0
     while df.loc[df.shape[0]+c-1,'total_power']==0:
         c-=1
-    #return of the the needed columns in the right order 
-    return df.loc[:df.shape[0]+c-1,['total_power','frac_day', 'frac_week', 'frac_year','date_time']]
-
+    #interpolate linear bad value (only exatcly 0 for now) which are not at the beginning or end 
+    for i in range(1,df.shape[0]+c-2):
+        if df.loc[i,'total_power']==0:
+            df.loc[i,'total_power']=(df.loc[i-1,'total_power']+df.loc[i+1,'total_power'])/2    
+    #return of the the needed columns in the right order, and dleta when last is likely bad
+    delta=0                   
+    if df.loc[df.shape[0]+c-1,'total_power']/df.loc[df.shape[0]+c-2,'total_power']<bad_cut:
+        delta=-1    
+    return df.loc[:df.shape[0]+c-1,['total_power','frac_day', 'frac_week', 'frac_year','date_time']], delta
 
 #plotting function 
 def plot_prediction(power_newest,prediction_newest):
