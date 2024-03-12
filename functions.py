@@ -484,8 +484,8 @@ def fit_many_gaps(df,gap_start=1,gap_steps=2,now_points=1,test_frac=0.8,max_dept
             filename="xgb_model_"+str(gap)+".json"            
         find_fit_best_reg(df,gap,now_points=now_points,test_frac=test_frac,max_depth=max_depth,reg_start=reg_start,reg_increase=reg_increase,reg_steps=reg_steps,delta=delta,filename=filename,save=True)
         
-#parameters, most recent features, list of model,delta ts, standard is just every 0.25 h from models, delta, means whether start_time is reduced sometimes also point is bad, like in  Realisierter_Stromverbrauch_202402260600_202403080559_Viertelstunde.csv (residual and pump are missing then could be a sign), now cleaned in input when 10% off from second alst data point, now linear interpolation of point when 10% of for 2 cloest and 2 second closets enighbor is heuristic 
-def predict_from_now(data,models,deltas=None,silent=False,delta=0,clean=True,clean_lim=0.05):
+#parameters, most recent features, list of model,delta ts, standard is just every 0.25 h from models, delta, means whether start_time is reduced sometimes also point is bad, like in  Realisierter_Stromverbrauch_202402260600_202403080559_Viertelstunde.csv (residual and pump are missing then could be a sign), now cleaned in input when 10% off from second alst data point, now linear interpolation of point when 4% of for 2 cloest and 2 second closets enighbor is heuristic, also saved now, better (justified) interpolation done at some point, both now saved
+def predict_from_now(data,models,deltas=None,silent=False,delta=0,clean_lim=0.04):
     if silent==False:    
         print(data)
     if deltas==None:
@@ -497,7 +497,7 @@ def predict_from_now(data,models,deltas=None,silent=False,delta=0,clean=True,cle
     res[0,:]=deltas
     for i in range(len(models)):
         if silent==False:
-            print(i)
+            print(f"prediction of model {i} dones")
         xmodel=XGBRegressor()
         xmodel.load_model(models[i])
         #predict needs more than 1 data point to work 
@@ -518,7 +518,7 @@ def predict_from_now(data,models,deltas=None,silent=False,delta=0,clean=True,cle
         #only correct when larger x for neighbor interpolation of 2 clest and 2 second closest neighbors
         if np.abs(df.loc[i,'consumption']-df.loc[i-2,'consumption']/2-df.loc[i+2,'consumption']/2)/(df.loc[i-2,'consumption']/2+df.loc[i+2,'consumption']/2)>clean_lim  and np.abs(df.loc[i,'consumption']-df.loc[i-1,'consumption']/2-df.loc[i+1,'consumption']/2)/(df.loc[i-1,'consumption']/2+df.loc[i+1,'consumption']/2)>clean_lim:
             df.loc[i,'consumption_cleaned']=(df.loc[i-1,'consumption']+df.loc[i+1,'consumption'])/2  
-            print(i)
+            print(f"{i} is cleaned")
     df.to_csv('prediction_'+str(year)+'_'+str(month)+'_'+str(day)+'_'+str(hour)+'_'+str(minute)+'.csv',sep=',')                
     return df           
 
