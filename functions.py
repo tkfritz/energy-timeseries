@@ -485,7 +485,7 @@ def fit_many_gaps(df,gap_start=1,gap_steps=2,now_points=1,test_frac=0.8,max_dept
         find_fit_best_reg(df,gap,now_points=now_points,test_frac=test_frac,max_depth=max_depth,reg_start=reg_start,reg_increase=reg_increase,reg_steps=reg_steps,delta=delta,filename=filename,save=True)
         
 #parameters, most recent features, list of model,delta ts, standard is just every 0.25 h from models, delta, means whether start_time is reduced sometimes also point is bad, like in  Realisierter_Stromverbrauch_202402260600_202403080559_Viertelstunde.csv (residual and pump are missing then could be a sign), now cleaned in input when 10% off from second alst data point, now linear interpolation of point when 10% of for 2 cloest and 2 second closets enighbor is heuristic 
-def predict_from_now(data,models,deltas=None,silent=False,delta=0,clean=True,clean_lim=0.1):
+def predict_from_now(data,models,deltas=None,silent=False,delta=0,clean=True,clean_lim=0.05):
     if silent==False:    
         print(data)
     if deltas==None:
@@ -512,13 +512,14 @@ def predict_from_now(data,models,deltas=None,silent=False,delta=0,clean=True,cle
     day=data.iloc[data.shape[0]-1+delta,data.shape[1]-1].day   
     hour=data.iloc[data.shape[0]-1+delta,data.shape[1]-1].hour    
     minute=data.iloc[data.shape[0]-1+delta,data.shape[1]-1].minute    
-    df.to_csv('prediction_'+str(year)+'_'+str(month)+'_'+str(day)+'_'+str(hour)+'_'+str(minute)+'.csv',sep=',')
-    #some more cleaning optimized by looking now,  thus not saved 
-    if clean==True:
-        for i in range(2,df.shape[0]-2):
-            #only correct when larger x for neighbor interpolation of 2 clest and 2 second closest neighbors
-            if np.abs(df.loc[i,'consumption']-df.loc[i-2,'consumption']/2-df.loc[i+2,'consumption']/2)/(df.loc[i-2,'consumption']/2+df.loc[i+2,'consumption']/2)>clean_lim  and np.abs(df.loc[i,'consumption']-df.loc[i-1,'consumption']/2-df.loc[i+1,'consumption']/2)/(df.loc[i-1,'consumption']/2+df.loc[i+1,'consumption']/2)>clean_lim:
-                df.loc[i,'consumption']=(df.loc[i-1,'consumption']+df.loc[i+1,'consumption'])/2         
+    #create now new cleaned column 
+    df['consumption_cleaned']=df['consumption']
+    for i in range(2,df.shape[0]-2):
+        #only correct when larger x for neighbor interpolation of 2 clest and 2 second closest neighbors
+        if np.abs(df.loc[i,'consumption']-df.loc[i-2,'consumption']/2-df.loc[i+2,'consumption']/2)/(df.loc[i-2,'consumption']/2+df.loc[i+2,'consumption']/2)>clean_lim  and np.abs(df.loc[i,'consumption']-df.loc[i-1,'consumption']/2-df.loc[i+1,'consumption']/2)/(df.loc[i-1,'consumption']/2+df.loc[i+1,'consumption']/2)>clean_lim:
+            df.loc[i,'consumption_cleaned']=(df.loc[i-1,'consumption']+df.loc[i+1,'consumption'])/2  
+            print(i)
+    df.to_csv('prediction_'+str(year)+'_'+str(month)+'_'+str(day)+'_'+str(hour)+'_'+str(minute)+'.csv',sep=',')                
     return df           
 
 def transform_projected(df):
@@ -591,7 +592,7 @@ def prepare_input(df,pump=False,end=False,bad_cut=0.9):
 #plotting function 
 def plot_prediction(power_newest,prediction_newest):
     plt.plot(power_newest['date_time'],(power_newest['total_power']*4),'-',ms=1,color='blue',label='observed')   
-    plt.plot(prediction_newest.date_time,prediction_newest.consumption,color='red',label='prediction')
+    plt.plot(prediction_newest.date_time,prediction_newest.consumption_cleaned,color='red',label='prediction')
     plt.xlabel("date")
     plt.ylabel("consumption [GW]") 
     plt.legend(loc="best")
