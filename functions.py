@@ -518,7 +518,8 @@ def predict_from_now(data,models,deltas=None,silent=False,delta=0,clean_lim=0.04
         #only correct when larger x for neighbor interpolation of 2 clest and 2 second closest neighbors
         if np.abs(df.loc[i,'consumption']-df.loc[i-2,'consumption']/2-df.loc[i+2,'consumption']/2)/(df.loc[i-2,'consumption']/2+df.loc[i+2,'consumption']/2)>clean_lim  and np.abs(df.loc[i,'consumption']-df.loc[i-1,'consumption']/2-df.loc[i+1,'consumption']/2)/(df.loc[i-1,'consumption']/2+df.loc[i+1,'consumption']/2)>clean_lim:
             df.loc[i,'consumption_cleaned']=(df.loc[i-1,'consumption']+df.loc[i+1,'consumption'])/2  
-            print(f"{i} is cleaned")
+            if silent==False:
+                print(f"{i} is cleaned")
     df.to_csv('prediction_'+str(year)+'_'+str(month)+'_'+str(day)+'_'+str(hour)+'_'+str(minute)+'.csv',sep=',')                
     return df           
 
