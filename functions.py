@@ -540,9 +540,9 @@ def transform_projected(df):
     return df
 
 
-def prepare_input(df,pump=False,end=False,bad_cut=0.9):
+def prepare_input(df,pump=False,end=False,bad_cut=0.9,zero_time=(2015,1,1,0,0)):
     #zero time of model can change later
-    zero=datetime(2015, 1, 1, 0, 0)
+    zero=datetime(zero_time)
     dic2={'Datum':'Date','Anfang':'Time','Gesamt (Netzlast) [MWh] Originalauflösungen':'total_power','Residuallast [MWh] Originalauflösungen':'residual_power','Pumpspeicher [MWh] Originalauflösungen':'pump_storage'}
     df.rename(columns=dic2,inplace=True)
     #drop columns
