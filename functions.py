@@ -540,7 +540,7 @@ def transform_projected(df):
     return df
 
 
-def prepare_input(df,pump=False,end=False,bad_cut=0.9,zero_time=(2015,1,1,0,0),old="False"):
+def prepare_input(df,pump=False,end=False,bad_cut=0.9,zero_time=(2015,1,1,0,0),old=False,str_convert=True):
     #zero time of model can change later
     zero=datetime(zero_time[0],zero_time[1],zero_time[2],zero_time[3],zero_time[4])
     #new column names
@@ -554,7 +554,7 @@ def prepare_input(df,pump=False,end=False,bad_cut=0.9,zero_time=(2015,1,1,0,0),o
     if end==True:
         df.drop(['Ende'], axis=1, inplace=True)
     #cpnvert german float to english 
-    if old==False:
+    if str_convert==True:
         df['residual_power'] = df['residual_power'].str.replace('.','')
         df['residual_power'] = df['residual_power'].str.replace('-','0')
         df['residual_power'] = df['residual_power'].str.replace(',','.').astype(float)/1000.
