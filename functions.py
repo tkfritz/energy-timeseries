@@ -554,15 +554,16 @@ def prepare_input(df,pump=False,end=False,bad_cut=0.9,zero_time=(2015,1,1,0,0),o
     if end==True:
         df.drop(['Ende'], axis=1, inplace=True)
     #cpnvert german float to english 
-    df['residual_power'] = df['residual_power'].str.replace('.','')
-    df['residual_power'] = df['residual_power'].str.replace('-','0')
-    df['residual_power'] = df['residual_power'].str.replace(',','.').astype(float)/1000.
-    df['total_power'] = df['total_power'].str.replace('.','')
-    df['total_power'] = df['total_power'].str.replace('-','0')    
-    df['total_power'] = df['total_power'].str.replace(',','.').astype(float)/1000.
-    if pump==True:
-        df['pump_storage'] = df['pump_storage'].str.replace('.','')
-        df['pump_storage'] = df['pump_storage'].str.replace(',','.').astype(float)/1000.
+    if old==False:
+        df['residual_power'] = df['residual_power'].str.replace('.','')
+        df['residual_power'] = df['residual_power'].str.replace('-','0')
+        df['residual_power'] = df['residual_power'].str.replace(',','.').astype(float)/1000.
+        df['total_power'] = df['total_power'].str.replace('.','')
+        df['total_power'] = df['total_power'].str.replace('-','0')    
+        df['total_power'] = df['total_power'].str.replace(',','.').astype(float)/1000.
+        if pump==True:
+            df['pump_storage'] = df['pump_storage'].str.replace('.','')
+            df['pump_storage'] = df['pump_storage'].str.replace(',','.').astype(float)/1000.
     df['date_time']=pd.to_datetime(df['Date'] + '.' + df['Time'], format='%d.%m.%Y.%H:%M')
     delta=str(df.loc[0,'date_time']-zero)
     #deltam=time.strftime(delta,'%M')
