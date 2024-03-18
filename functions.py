@@ -544,7 +544,7 @@ def prepare_input(df,pump=False,end=False,bad_cut=0.9,zero_time=(2015,1,1,0,0),o
     #zero time of model can change later
     zero=datetime(zero_time[0],zero_time[1],zero_time[2],zero_time[3],zero_time[4])
     #new column names
-    if old=="False":
+    if old==False:
         dic2={'Datum':'Date','Anfang':'Time','Gesamt (Netzlast) [MWh] Originalauflösungen':'total_power','Residuallast [MWh] Originalauflösungen':'residual_power','Pumpspeicher [MWh] Originalauflösungen':'pump_storage'}
         df.rename(columns=dic2,inplace=True)
     else:
