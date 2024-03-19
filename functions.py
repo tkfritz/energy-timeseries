@@ -5,7 +5,7 @@ import numpy as np
 import random as random
 from datetime import date, time, datetime, timedelta
 import pandas as pd
-import scipy
+import scipy as sp
 #for confidence intervalls
 from scipy.stats import beta
 from scipy import stats
