@@ -34,14 +34,12 @@ def perwrong(conf_matrix):
 
 #feature_train, target_train, feature_test, target_train, max depth of xgb, needs always be set *6 is equal to default), optional regularization alpha (larger less overfitting)
 def do_xgb(feature_train, target_train, feature_test, target_test,max_depth,reg=0,silent=False):
-    start_time=time.time()
+    start_time=datetime.now()
     #no regularization option
     if reg==0:
         regxl27=XGBRegressor(max_depth=max_depth).fit(feature_train, target_train)
     else:
         regxl27=XGBRegressor(max_depth=max_depth,reg_alpha=reg).fit(feature_train, target_train)        
-    stop_time=time.time()
-    print(f"xgb took {round(stop_time-start_time,4)} seconds")
     predli1texl27=regxl27.predict(feature_test)
     predli1trxl27=regxl27.predict(feature_train)
     test_scatter=np.std(predli1texl27-target_test)
@@ -56,6 +54,8 @@ def do_xgb(feature_train, target_train, feature_test, target_test,max_depth,reg=
     ar[1]=max_depth
     ar[2]=train_scatter
     ar[3]=test_scatter
+    stop_time=datetime.now()
+    print(f"xgb took {(stop_time-start_time)} seconds")
     return ar
 
 
