@@ -25,6 +25,8 @@ import os
 import pickle
 #matplotlib
 from matplotlib import pyplot as plt
+#easter date
+from dateutil.easter import *
 
 #returns fractions of wrong  predicted
 def perwrong(conf_matrix):
@@ -483,45 +485,7 @@ def fit_many_gaps(df,gap_start=1,gap_steps=2,now_points=1,test_frac=0.8,max_dept
         elif gap<1000:
             filename="xgb_model_"+str(gap)+".json"            
         find_fit_best_reg(df,gap,now_points=now_points,test_frac=test_frac,max_depth=max_depth,reg_start=reg_start,reg_increase=reg_increase,reg_steps=reg_steps,delta=delta,filename=filename,save=True)
-        
-#parameters, most recent features, list of model,delta ts, standard is just every 0.25 h from models, delta, means whether start_time is reduced sometimes also point is bad, like in  Realisierter_Stromverbrauch_202402260600_202403080559_Viertelstunde.csv (residual and pump are missing then could be a sign), now cleaned in input when 10% off from second alst data point, now linear interpolation of point when 4% of for 2 cloest and 2 second closets enighbor is heuristic, also saved now, better (justified) interpolation done at some point, both now saved
-def predict_from_now(data,models,deltas=None,silent=False,delta=0,clean_lim=0.04):
-    if silent==False:    
-        print(data)
-    if deltas==None:
-        deltas=np.zeros((len(models)))
-        for i in range(len(models)):
-            deltas[i]=0.25+i/4
-    #3 error to be added at some point        
-    res=np.zeros((3,len(models)))  
-    res[0,:]=deltas
-    for i in range(len(models)):
-        if silent==False:
-            print(f"prediction of model {i} dones")
-        xmodel=XGBRegressor()
-        xmodel.load_model(models[i])
-        #predict needs more than 1 data point to work 
-        res[1,i]=xmodel.predict(data.iloc[:,0:4])[-1+delta]*4
-    #make data frame 
-    df=pd.DataFrame(res.T,columns=['hours','consumption','error'])
-    for i in range(df.shape[0]):
-        df.loc[i,'date_time']=data.iloc[data.shape[0]-1+delta,data.shape[1]-1]+timedelta(hours=df['hours'][i])
-    #also write it that the predictions can be investiagted at some point
-    year=data.iloc[data.shape[0]-1+delta,data.shape[1]-1].year
-    month=data.iloc[data.shape[0]-1+delta,data.shape[1]-1].month    
-    day=data.iloc[data.shape[0]-1+delta,data.shape[1]-1].day   
-    hour=data.iloc[data.shape[0]-1+delta,data.shape[1]-1].hour    
-    minute=data.iloc[data.shape[0]-1+delta,data.shape[1]-1].minute    
-    #create now new cleaned column 
-    df['consumption_cleaned']=df['consumption']
-    for i in range(2,df.shape[0]-2):
-        #only correct when larger x for neighbor interpolation of 2 clest and 2 second closest neighbors
-        if np.abs(df.loc[i,'consumption']-df.loc[i-2,'consumption']/2-df.loc[i+2,'consumption']/2)/(df.loc[i-2,'consumption']/2+df.loc[i+2,'consumption']/2)>clean_lim  and np.abs(df.loc[i,'consumption']-df.loc[i-1,'consumption']/2-df.loc[i+1,'consumption']/2)/(df.loc[i-1,'consumption']/2+df.loc[i+1,'consumption']/2)>clean_lim:
-            df.loc[i,'consumption_cleaned']=(df.loc[i-1,'consumption']+df.loc[i+1,'consumption'])/2  
-            if silent==False:
-                print(f"{i} is cleaned")
-    df.to_csv('prediction_'+str(year)+'_'+str(month)+'_'+str(day)+'_'+str(hour)+'_'+str(minute)+'.csv',sep=',')                
-    return df           
+       
 
 def transform_projected(df):
     dic2b={'Datum':'Date','Anfang':'Time','Gesamt (Netzlast) [MWh] Originalauflösungen':'total_power_pred','Residuallast [MWh] Originalauflösungen':'residual_power_pred'}
@@ -539,8 +503,7 @@ def transform_projected(df):
     df['date_time']=pd.to_datetime(df['Date'] + '.' + df['Time'], format='%d.%m.%Y.%H:%M')
     return df
 
-
-def prepare_input(df,pump=False,end=False,bad_cut=0.9,zero_time=(2015,1,1,0,0),old=False,str_convert=True):
+def prepare_input(df,pump=False,end=False,bad_cut=0.9,zero_time=(2015,1,1,0,0),old=False,str_convert=True,version='y_fraction1'):
     #zero time of model can change later
     zero=datetime(zero_time[0],zero_time[1],zero_time[2],zero_time[3],zero_time[4])
     #new column names
@@ -582,6 +545,20 @@ def prepare_input(df,pump=False,end=False,bad_cut=0.9,zero_time=(2015,1,1,0,0),o
     df['frac_week']=time1[:,2]
     df['frac_year']=time1[:,3]
     #works at least for full days, later more checks 
+    #helper parameter used below
+    df['year']=df.date_time.dt.year.astype(int)
+    df['month']=df.date_time.dt.month.astype(int)
+    #days from easter of this year
+    df['delta_easter']=0
+    #days from first march of the year, gest holidayts right given leap years
+    df['delta_march']=0
+    #works at least for full days, later more checks 
+    for i in range(df.shape[0]):
+        df['delta_easter'].iloc[i]=(df['date_time'].iloc[i]-pd.to_datetime(easter(df.year.iloc[i]))).days
+        if df.month.iloc[i]<2.5:
+            df['delta_march'].iloc[i]=(df['date_time'].iloc[i]-datetime(df['year'].iloc[i]-1,3,1)).days
+        else:
+            df['delta_march'].iloc[i]=(df['date_time'].iloc[i]-datetime(df['year'].iloc[i],3,1)).days            
     #exclude what is zero at the end
     c=0
     while df.loc[df.shape[0]+c-1,'total_power']==0:
@@ -593,13 +570,22 @@ def prepare_input(df,pump=False,end=False,bad_cut=0.9,zero_time=(2015,1,1,0,0),o
     #return of the the needed columns in the right order, and dleta when last is likely bad
     delta=0                   
     if df.loc[df.shape[0]+c-1,'total_power']/df.loc[df.shape[0]+c-2,'total_power']<bad_cut:
-        delta=-1    
-    return df.loc[:df.shape[0]+c-1+delta,['total_power','frac_day', 'frac_week', 'frac_year','date_time']]
-
+        delta=-1
+    #return needed output, order matters    
+    if version=='y_fraction1':    
+        return df.loc[:df.shape[0]+c-1+delta,['total_power','frac_day', 'frac_week', 'frac_year','date_time']]
+    elif version=='d_easter1':    
+        return df.loc[:df.shape[0]+c-1+delta,['frac_day','frac_week','delta_easter','total_power','date_time']] 
+    elif version=='d_march1':    
+        return df.loc[:df.shape[0]+c-1+delta,['frac_day','frac_week','delta_march','total_power','date_time']]    
+    
 #plotting function 
-def plot_prediction(power_newest,prediction_newest):
+def plot_prediction(power_newest,prediction_newest,plot_error=False):
     plt.plot(power_newest['date_time'],(power_newest['total_power']*4),'-',ms=1,color='blue',label='observed')   
     plt.plot(prediction_newest.date_time,prediction_newest.consumption_cleaned,color='red',label='prediction')
+    if plot_error==True:
+        plt.plot(prediction_newest.date_time,prediction_newest.consumption_cleaned+prediction_newest.error,color='orange',label='1 sigma band')
+        plt.plot(prediction_newest.date_time,prediction_newest.consumption_cleaned-prediction_newest.error,color='orange')
     plt.xlabel("date")
     plt.ylabel("consumption [GW]") 
     plt.legend(loc="best")
@@ -613,34 +599,209 @@ def plot_prediction(power_newest,prediction_newest):
     month_start=min_t.month
     day_start=min_t.day
     plot_start = datetime(year_start, month_start, day_start)
-    min_pred=prediction_newest.consumption.min()
-    max_pred=prediction_newest.consumption.max()
+    if plot_error==False:
+        min_pred=prediction_newest.consumption_cleaned.min()
+        max_pred=prediction_newest.consumption_cleaned.max()
+    else:
+        min_pred=(prediction_newest.consumption_cleaned-prediction_newest.error).min()
+        max_pred=(prediction_newest.consumption_cleaned+prediction_newest.error).max()    
     power_sel=power_newest[(power_newest.date_time==plot_start)]
     min_actual=4*power_newest[power_sel.index[0]:].total_power.min()
     max_actual=4*power_newest[power_sel.index[0]:].total_power.max()
     min_power=min(min_pred,min_actual)
     max_power=max(max_pred,max_actual)
     plt.xlim(datetime(year_start,month_start,day_start),datetime(year_stop,month_stop,day_stop))
-    plt.ylim(min_power*0.99,max_power*1.01)
-
-def find_data(start_x='xgb_model_',end_x='json',data='Realisierter_Stromverbrauch_',myPath='/home/tobias/ml-testing/energy/energy-timeseries'):
+    plt.ylim(min_power*0.99,max_power*1.01)    
+    
+    
+def find_data(end_x='json',data='Realisierter_Stromverbrauch_',myPath='/home/tobias/ml-testing/energy/energy-timeseries',version='y_fraction1'):
+    if version=='y_fraction1':
+        start_x='xgb_model_'
+    if version=='d_easter1':
+        start_x='xgb2e_model_'
+        errors=np.loadtxt("xgb2e_model_error_offset.txt")
     models=[f for f in os.listdir(myPath) 
         if (f.startswith(start_x)) and  (f.endswith(end_x) )] 
     models.sort()
     data=[f for f in os.listdir(myPath) 
         if (f.startswith(data))]
-    data.sort()          
-    return models, data
+    data.sort()
+    errors=np.loadtxt("xgb2e_model_error_offset.txt")
+    if version=='y_fraction1': 
+        return models, data
+    if version=='d_easter1': 
+        return models, data, errors      
+    
+    
+#parameters, most recent features, list of model,delta ts, standard is just every 0.25 h from models, delta, means whether start_time is reduced sometimes also point is bad, like in  Realisierter_Stromverbrauch_202402260600_202403080559_Viertelstunde.csv (residual and pump are missing then could be a sign), now cleaned in input when 10% off from second alst data point, now linear interpolation of point when 4% of for 2 cloest and 2 second closets enighbor is heuristic, also saved now, better (justified) interpolation done at some point, both now saved
+def predict_from_now(data,models,errors=None,deltas=None,silent=False,delta=0,version='y_fraction1'):
+    if silent==False:    
+        print(data)
+    if deltas==None:
+        deltas=np.zeros((len(models)))
+        for i in range(len(models)):
+            deltas[i]=0.25+i/4
+    #3 error to be added at some point        
+    res=np.zeros((3,len(models)))  
+    res[0,:]=deltas
+    for i in range(len(models)):
+        if silent==False:
+            print(f"prediction of model {i} dones")
+        xmodel=XGBRegressor()
+        xmodel.load_model(models[i])
+        #predict needs more than 1 data point to work 
+        #oldest model no error and nom offset
+        if version=='y_fraction1':
+            res[1,i]=xmodel.predict(data.iloc[:,0:4])[-1+delta]*4
+        #other have     
+        elif version=='d_easter1':
+            #predict
+            pred=xmodel.predict(data.iloc[:,0:4])[-1+delta]
+            #use absolute adjustments
+            res[1,i]=(pred+errors[2,i])*4   
+            res[2,i]=errors[1,i]*4
+        elif version=='d_march1':
+            pred=xmodel.predict(data.iloc[:,0:4])[-1+delta]
+            res[1,i]=(pred+errors[2,i])*4   
+            res[2,i]=errors[1,i]*4
+    #make data frame 
+    df=pd.DataFrame(res.T,columns=['hours','consumption','error'])
+    for i in range(df.shape[0]):
+        df.loc[i,'date_time']=data.iloc[data.shape[0]-1+delta,data.shape[1]-1]+timedelta(hours=df['hours'][i])
+    #also write it that the predictions can be investiagted at some point
+    year=data.iloc[data.shape[0]-1+delta,data.shape[1]-1].year
+    month=data.iloc[data.shape[0]-1+delta,data.shape[1]-1].month    
+    day=data.iloc[data.shape[0]-1+delta,data.shape[1]-1].day   
+    hour=data.iloc[data.shape[0]-1+delta,data.shape[1]-1].hour    
+    minute=data.iloc[data.shape[0]-1+delta,data.shape[1]-1].minute                   
+    return df,year,month,day, hour, minute         
 
-#piple to do the rest that code is not visisble to standard users 
-def pipeline_v1():
+
+def quadratic(x,a,b,c):
+    return a+b*x+c*x**2
+
+
+def clean_prediction(df,year,month,day, hour, minute,silent=True,mode='linear1',version='y_fraction1',clean_lim=0.04):
+    #create now new cleaned column 
+    #df['consumption_cleaned']=df['consumption']
+    if mode=='linear1':
+        for i in range(df.shape[0]):
+            if i>=2 and i<df.shape[0]-2:            
+               #only correct when larger x for neighbor interpolation of 2 clest and 2 second closest neighbors
+               if np.abs(df.loc[i,'consumption']-df.loc[i-2,'consumption']/2-df.loc[i+2,'consumption']/2)/(df.loc[i-2,'consumption']/2+df.loc[i+2,'consumption']/2)>clean_lim  and np.abs(df.loc[i,'consumption']-df.loc[i-1,'consumption']/2-df.loc[i+1,'consumption']/2)/(df.loc[i-1,'consumption']/2+df.loc[i+1,'consumption']/2)>clean_lim:
+                    df.loc[i,'consumption_cleaned']=(df.loc[i-1,'consumption']+df.loc[i+1,'consumption'])/2  
+                    if silent==False:
+                        print(f"{i} is cleaned")
+               else:   
+                    df.loc[i,'consumption_cleaned']=df.loc[i,'consumption']
+            else:   
+                df.loc[i,'consumption_cleaned']=df.loc[i,'consumption']        
+    elif mode=='quadratic1':
+        for i in range(df.shape[0]):
+            if i>=2 and i<df.shape[0]-2:
+                err=np.zeros((4,5))
+                err[0]=[-2.,-1.,0.,1.,2.]
+                err[1]=df.loc[i-2:i+2,'consumption']
+                if version=='y_fraction1':
+                    #set one set the scipy below workds
+                    err[2]=1.
+                    err[3]=1.
+                else:    
+                    err[2]=df.loc[i-2:i+2,'error']
+                    err[3]=df.loc[i-2:i+2,'error']
+                x2=0
+                for j in range(5):
+                    x=i-2+j-2
+                    y=i+2+j+2
+                    if x>=0 and y<df.shape[0]:
+                        if np.abs(df.loc[i+j-2,'consumption']-df.loc[i-2+j-2,'consumption']/2-df.loc[i+2+j-2,'consumption']/2)/(df.loc[i-2+j-2,'consumption']/2+df.loc[i+2+j-2,'consumption']/2)>clean_lim  and np.abs(df.loc[i+j-2,'consumption']-df.loc[i-1+j-2,'consumption']/2-df.loc[i+1+j-2,'consumption']/2)/(df.loc[i-1+j-2,'consumption']/2+df.loc[i+1+j-2,'consumption']/2)>clean_lim:
+                            #error is increased by factor 10, means in practice irrelevant easier then remove it
+                            err[3,j]=err[2,j]*10
+                            x2=2
+                            if silent==False:
+                                print(f"{i} is error  increased")
+                                print(err)
+                est=np.zeros((3))
+                val,cov=sp.optimize.curve_fit(quadratic,err[0],err[1],sigma=err[3],absolute_sigma=True,p0=est)
+                df.loc[i,'consumption_cleaned']=val[0]
+                if silent==False and x2==2:
+                    print(df.loc[i,'consumption_cleaned'])
+            else:
+                df.loc[i,'consumption_cleaned']=df.loc[i,'consumption']
+                
+    df.to_csv(version+'_prediction_'+str(year)+'_'+str(month)+'_'+str(day)+'_'+str(hour)+'_'+str(minute)+'.csv',sep=',') 
+    return df
+
+
+#parameter, version of models, whetehr process is printed, whether error is used in Figure
+def pipeline(version='y_fraction1',silent=True,plot_error=False,mode='linear1'):
     #get model and data file lists
-    models,data=find_data()
+    if version=='y_fraction1':
+        models,data=find_data(version=version)
+        #create dummy errors to simplyfy prediction below
+        errors=np.zeros((3,len(models)))
+        #create non zero error to avoid error problem
+        errors[1]=1.
+    if version=='d_easter1':
+        models,data,errors=find_data(version=version)   
+    #also error/offset file if exist    
     #last in list is newest 
     new_real=pd.read_csv(data[-1],delimiter=';')
     #prepocess including some data cleaning
-    power_newest=prepare_input(new_real)
+    power_newest=prepare_input(new_real,version=version)
     #apply prediction
-    prediction_newest=predict_from_now(power_newest.loc[power_newest.shape[0]-3:power_newest.shape[0],:],models[:],silent=True)
+    prediction_newest,y,mo,d,h,mi=predict_from_now(power_newest.loc[power_newest.shape[0]-3:power_newest.shape[0],:],models[:],errors,silent=silent,version=version)
+    #clean prediction
+    prediction_newest=clean_prediction(prediction_newest,y,mo,d,h,mi,silent=silent,mode=mode)
     #plot prediction
-    plot_prediction(power_newest.iloc[:,:],prediction_newest)
+    plot_prediction(power_newest.iloc[:,:],prediction_newest,plot_error=plot_error)
+    
+    
+#now hidden parameters for d_easter1 model 
+#parameter, version of models, whetehr process is printed, whether error is used in Figure
+def pipeline_v2(version='d_easter1',silent=True,plot_error=False,mode='quadratic1'):
+    #get model and data file lists
+    if version=='y_fraction1':
+        models,data=find_data(version=version)
+        #create dummy errors to simplyfy prediction below
+        errors=np.zeros((3,len(models)))
+        #create non zero error to avoid error problem
+        errors[1]=1.
+    if version=='d_easter1':
+        models,data,errors=find_data(version=version)   
+    #also error/offset file if exist    
+    #last in list is newest 
+    new_real=pd.read_csv(data[-1],delimiter=';')
+    #prepocess including some data cleaning
+    power_newest=prepare_input(new_real,version=version)
+    #apply prediction
+    prediction_newest,y,mo,d,h,mi=predict_from_now(power_newest.loc[power_newest.shape[0]-3:power_newest.shape[0],:],models[:],errors,silent=silent,version=version)
+    #clean prediction
+    prediction_newest=clean_prediction(prediction_newest,y,mo,d,h,mi,silent=silent,mode=mode)
+    #plot prediction
+    plot_prediction(power_newest.iloc[:,:],prediction_newest,plot_error=plot_error)
+    
+    
+#now hidden parameters for y_fraction1 model 
+#parameter, version of models, whetehr process is printed, whether error is used in Figure
+def pipeline_v1(version='y_fraction1',silent=True,plot_error=False,mode='quadratic1'):
+    #get model and data file lists
+    if version=='y_fraction1':
+        models,data=find_data(version=version)
+        #create dummy errors to simplyfy prediction below
+        errors=np.zeros((3,len(models)))
+        #create non zero error to avoid error problem
+        errors[1]=1.
+    if version=='d_easter1':
+        models,data,errors=find_data(version=version)   
+    #also error/offset file if exist    
+    #last in list is newest 
+    new_real=pd.read_csv(data[-1],delimiter=';')
+    #prepocess including some data cleaning
+    power_newest=prepare_input(new_real,version=version)
+    #apply prediction
+    prediction_newest,y,mo,d,h,mi=predict_from_now(power_newest.loc[power_newest.shape[0]-3:power_newest.shape[0],:],models[:],errors,silent=silent,version=version)
+    #clean prediction
+    prediction_newest=clean_prediction(prediction_newest,y,mo,d,h,mi,silent=silent,mode=mode)
+    #plot prediction
+    plot_prediction(power_newest.iloc[:,:],prediction_newest,plot_error=plot_error)    
