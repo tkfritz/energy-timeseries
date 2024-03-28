@@ -752,7 +752,7 @@ def pipeline(version='y_fraction1',silent=True,plot_error=False,mode='linear1'):
     #apply prediction
     prediction_newest,y,mo,d,h,mi=predict_from_now(power_newest.loc[power_newest.shape[0]-3:power_newest.shape[0],:],models[:],errors,silent=silent,version=version)
     #clean prediction
-    prediction_newest=clean_prediction(prediction_newest,y,mo,d,h,mi,silent=silent,mode=mode)
+    prediction_newest=clean_prediction(prediction_newest,y,mo,d,h,mi,silent=silent,mode=mode,version=version)
     #plot prediction
     plot_prediction(power_newest.iloc[:,:],prediction_newest,plot_error=plot_error)
     
@@ -777,7 +777,7 @@ def pipeline_v2(version='d_easter1',silent=True,plot_error=False,mode='quadratic
     #apply prediction
     prediction_newest,y,mo,d,h,mi=predict_from_now(power_newest.loc[power_newest.shape[0]-3:power_newest.shape[0],:],models[:],errors,silent=silent,version=version)
     #clean prediction
-    prediction_newest=clean_prediction(prediction_newest,y,mo,d,h,mi,silent=silent,mode=mode)
+    prediction_newest=clean_prediction(prediction_newest,y,mo,d,h,mi,silent=silent,mode=mode,version=version)
     #plot prediction
     plot_prediction(power_newest.iloc[:,:],prediction_newest,plot_error=plot_error)
     
@@ -802,6 +802,6 @@ def pipeline_v1(version='y_fraction1',silent=True,plot_error=False,mode='quadrat
     #apply prediction
     prediction_newest,y,mo,d,h,mi=predict_from_now(power_newest.loc[power_newest.shape[0]-3:power_newest.shape[0],:],models[:],errors,silent=silent,version=version)
     #clean prediction
-    prediction_newest=clean_prediction(prediction_newest,y,mo,d,h,mi,silent=silent,mode=mode)
+    prediction_newest=clean_prediction(prediction_newest,y,mo,d,h,mi,silent=silent,mode=mode,version=version)
     #plot prediction
     plot_prediction(power_newest.iloc[:,:],prediction_newest,plot_error=plot_error)    
