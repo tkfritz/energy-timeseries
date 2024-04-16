@@ -503,14 +503,18 @@ def transform_projected(df):
     df['date_time']=pd.to_datetime(df['Date'] + '.' + df['Time'], format='%d.%m.%Y.%H:%M')
     return df
 
-def prepare_input(df,pump=False,end=False,bad_cut=0.9,zero_time=(2015,1,1,0,0),old=False,str_convert=True,version='y_fraction1'):
+
+def prepare_input(df,pump=False,end=False,bad_cut=0.9,zero_time=(2015,1,1,0,0),old=False,str_convert=True,version='y_fraction1',newest=False):
     #zero time of model can change later
     zero=datetime(zero_time[0],zero_time[1],zero_time[2],zero_time[3],zero_time[4])
     #new column names
-    if old==False:
+    if old==False and newest==False:
         dic2={'Datum':'Date','Anfang':'Time','Gesamt (Netzlast) [MWh] Originalauflösungen':'total_power','Residuallast [MWh] Originalauflösungen':'residual_power','Pumpspeicher [MWh] Originalauflösungen':'pump_storage'}
         df.rename(columns=dic2,inplace=True)
-    else:
+    if old==False and newest==True:
+        dic3={'VD-DM-Alles.tabellenKopf.columnHeader.date_start':'date_time','VD-DM-Alles.tabellenKopf.columnHeader.date_end':'date_time_end','Gesamt (Netzlast) [MWh] Originalauflösungen':'total_power','Residuallast [MWh] Originalauflösungen':'residual_power','Pumpspeicher [MWh] Originalauflösungen':'pump_storage'}
+        df.rename(columns=dic3,inplace=True)        
+    elif old==True:
         dic1={'Datum':'Date','Uhrzeit':'Time','Gesamt (Netzlast)[MWh]':'total_power','Residuallast[MWh]':'residual_power','Pumpspeicher[MWh]':'pump_storage'}
         df.rename(columns=dic1,inplace=True)
     #drop columns
@@ -526,8 +530,13 @@ def prepare_input(df,pump=False,end=False,bad_cut=0.9,zero_time=(2015,1,1,0,0),o
         df['total_power'] = df['total_power'].str.replace(',','.').astype(float)/1000.
         if pump==True:
             df['pump_storage'] = df['pump_storage'].str.replace('.','')
-            df['pump_storage'] = df['pump_storage'].str.replace(',','.').astype(float)/1000.
-    df['date_time']=pd.to_datetime(df['Date'] + '.' + df['Time'], format='%d.%m.%Y.%H:%M')
+            df['pump_storage'] = df['pump_storage'].str.replace(',','.').astype(float)/1000.       
+    #old not combined date and time         
+    if newest==False:        
+        df['date_time']=pd.to_datetime(df['Date'] + '.' + df['Time'], format='%d.%m.%Y.%H:%M')
+    #new is combined     
+    else:
+        df['date_time']=pd.to_datetime(df['date_time'], format='%d.%m.%Y %H:%M')
     delta=str(df.loc[0,'date_time']-zero)
     #deltam=time.strftime(delta,'%M')
     days=delta.split(' days ')
@@ -578,6 +587,7 @@ def prepare_input(df,pump=False,end=False,bad_cut=0.9,zero_time=(2015,1,1,0,0),o
         return df.loc[:df.shape[0]+c-1+delta,['frac_day','frac_week','delta_easter','total_power','date_time']] 
     elif version=='d_march1':    
         return df.loc[:df.shape[0]+c-1+delta,['frac_day','frac_week','delta_march','total_power','date_time']]    
+ 
     
 #plotting function 
 def plot_prediction(power_newest,prediction_newest,plot_error=False):
