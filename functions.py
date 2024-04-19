@@ -783,8 +783,10 @@ def pipeline_v2(version='d_easter1',silent=True,plot_error=False,mode='quadratic
         errors=np.zeros((3,len(models)))
         #create non zero error to avoid error problem
         errors[1]=1.
-    if version=='d_easter1':
-        models,data,errors=find_data(version=version)   
+    elif version=='d_easter1':
+        models,data,errors=find_data(version=version)  
+    elif version=='d_march1':
+        models,data,errors=find_data(version=version)          
     #also error/offset file if exist    
     #last in list is newest 
     new_real=pd.read_csv(data[-1],delimiter=';')
@@ -807,8 +809,10 @@ def pipeline_v1(version='y_fraction1',silent=True,plot_error=False,mode='quadrat
         errors=np.zeros((3,len(models)))
         #create non zero error to avoid error problem
         errors[1]=1.
-    if version=='d_easter1':
+    elif version=='d_easter1':
         models,data,errors=find_data(version=version)   
+    elif version=='d_march1':
+        models,data,errors=find_data(version=version)          
     #also error/offset file if exist    
     #last in list is newest 
     new_real=pd.read_csv(data[-1],delimiter=';')
