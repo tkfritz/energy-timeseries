@@ -630,18 +630,21 @@ def find_data(end_x='json',data='Realisierter_Stromverbrauch_',myPath='/home/tob
     if version=='d_easter1':
         start_x='xgb2e_model_'
         errors=np.loadtxt("xgb2e_model_error_offset.txt")
+    if version=='d_march1':
+        start_x='xgb2m_model_'
+        errors=np.loadtxt("xgb2m_model_error_offset.txt")        
     models=[f for f in os.listdir(myPath) 
         if (f.startswith(start_x)) and  (f.endswith(end_x) )] 
     models.sort()
     data=[f for f in os.listdir(myPath) 
         if (f.startswith(data))]
     data.sort()
-    errors=np.loadtxt("xgb2e_model_error_offset.txt")
     if version=='y_fraction1': 
         return models, data
     if version=='d_easter1': 
         return models, data, errors      
-    
+    if version=='d_march1': 
+        return models, data, errors     
     
 #parameters, most recent features, list of model,delta ts, standard is just every 0.25 h from models, delta, means whether start_time is reduced sometimes also point is bad, like in  Realisierter_Stromverbrauch_202402260600_202403080559_Viertelstunde.csv (residual and pump are missing then could be a sign), now cleaned in input when 10% off from second alst data point, now linear interpolation of point when 4% of for 2 cloest and 2 second closets enighbor is heuristic, also saved now, better (justified) interpolation done at some point, both now saved
 def predict_from_now(data,models,errors=None,deltas=None,silent=False,delta=0,version='y_fraction1'):
