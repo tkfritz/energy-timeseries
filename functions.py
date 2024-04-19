@@ -798,6 +798,30 @@ def pipeline_v2(version='d_easter1',silent=True,plot_error=False,mode='quadratic
     #plot prediction
     plot_prediction(power_newest.iloc[:,:],prediction_newest,plot_error=plot_error)
     
+#this function sets standard parameter to march model that function can be called without parameters
+#parameter, version of models, whetehr process is printed, whether error is used in Figure
+def pipeline_v3(version='d_march1',silent=True,plot_error=False,mode='quadratic1',newest=True,old=False):
+    #get model and data file lists
+    if version=='y_fraction1':
+        models,data=find_data(version=version)
+        #create euqal errors to make possible ton run the function below
+        errors=np.zeros((3,len(models)))
+        #create non zero error to avoid error problem
+        errors[1]=1.
+    elif version=='d_easter1':
+        models,data,errors=find_data(version=version)  
+    elif version=='d_march1':
+        models,data,errors=find_data(version=version)          
+    #also error/offset file if exist    
+    #last in list is newest 
+    new_real=pd.read_csv(data[-1],delimiter=';')
+    power_newest=prepare_input(new_real,newest=newest,old=old,version=version,str_convert=True)
+    #apply prediction
+    prediction_newest,y,mo,d,h,mi=predict_from_now(power_newest.loc[power_newest.shape[0]-3:power_newest.shape[0],:],models[:],errors,silent=silent,version=version)
+    #clean prediction
+    prediction_newest=clean_prediction(prediction_newest,y,mo,d,h,mi,silent=silent,mode=mode,version=version)
+    #plot prediction
+    plot_prediction(power_newest.iloc[:,:],prediction_newest,plot_error=plot_error)
     
 #now hidden parameters for y_fraction1 model 
 #parameter, version of models, whetehr process is printed, whether error is used in Figure
