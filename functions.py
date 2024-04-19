@@ -747,7 +747,7 @@ def clean_prediction(df,year,month,day, hour, minute,silent=True,mode='linear1',
 
 
 #parameter, version of models, whetehr process is printed, whether error is used in Figure
-def pipeline(version='y_fraction1',silent=True,plot_error=False,mode='linear1'):
+def pipeline(version='y_fraction1',silent=True,plot_error=False,mode='linear1',old=False,newest=False):
     #get model and data file lists
     if version=='y_fraction1':
         models,data=find_data(version=version)
@@ -763,7 +763,7 @@ def pipeline(version='y_fraction1',silent=True,plot_error=False,mode='linear1'):
     #last in list is newest 
     new_real=pd.read_csv(data[-1],delimiter=';')
     #prepocess including some data cleaning
-    power_newest=prepare_input(new_real,version=version)
+    power_newest=prepare_input(new_real,newest=newest,old=old,version=version,str_convert=True)
     #apply prediction
     prediction_newest,y,mo,d,h,mi=predict_from_now(power_newest.loc[power_newest.shape[0]-3:power_newest.shape[0],:],models[:],errors,silent=silent,version=version)
     #clean prediction
