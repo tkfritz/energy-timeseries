@@ -747,7 +747,7 @@ def clean_prediction(df,year,month,day, hour, minute,silent=True,mode='linear1',
 
 
 #parameter, version of models, whetehr process is printed, whether error is used in Figure
-def pipeline(version='y_fraction1',silent=True,plot_error=False,mode='linear1',old=False,newest=False):
+def pipeline(version='y_fraction1',silent=True,plot_error=False,mode='linear1',new_level=0):
     #get model and data file lists
     if version=='y_fraction1':
         models,data=find_data(version=version)
@@ -762,8 +762,8 @@ def pipeline(version='y_fraction1',silent=True,plot_error=False,mode='linear1',o
     #also error/offset file if exist    
     #last in list is newest 
     new_real=pd.read_csv(data[-1],delimiter=';')
-    #prepocess including some data cleaning
-    power_newest=prepare_input(new_real,newest=newest,old=old,version=version,str_convert=True)
+    #prepocessing including some data cleaning
+    power_newest=prepare_input2(new_real,new_level=new_level,version=version,str_convert=True)
     #apply prediction
     prediction_newest,y,mo,d,h,mi=predict_from_now(power_newest.loc[power_newest.shape[0]-3:power_newest.shape[0],:],models[:],errors,silent=silent,version=version)
     #clean prediction
@@ -775,6 +775,7 @@ def pipeline(version='y_fraction1',silent=True,plot_error=False,mode='linear1',o
 
 #now hidden parameters for d_easter1 model 
 #parameter, version of models, whetehr process is printed, whether error is used in Figure
+#does not work currently because if changes in version of data 
 def pipeline_v2(version='d_easter1',silent=True,plot_error=False,mode='quadratic1',newest=True,old=False):
     #get model and data file lists
     if version=='y_fraction1':
@@ -800,22 +801,47 @@ def pipeline_v2(version='d_easter1',silent=True,plot_error=False,mode='quadratic
     
 #this function sets standard parameter to march model that function can be called without parameters
 #parameter, version of models, whetehr process is printed, whether error is used in Figure
-def pipeline_v3(version='d_march1',silent=True,plot_error=False,mode='quadratic1',newest=True,old=False):
+def pipeline_v3(version='d_march1',silent=True,plot_error=False,mode='quadratic1',new_level=2):
     #get model and data file lists
     if version=='y_fraction1':
         models,data=find_data(version=version)
-        #create euqal errors to make possible ton run the function below
+        #create dummy errors to simplyfy prediction below
         errors=np.zeros((3,len(models)))
         #create non zero error to avoid error problem
         errors[1]=1.
     elif version=='d_easter1':
-        models,data,errors=find_data(version=version)  
+        models,data,errors=find_data(version=version)   
     elif version=='d_march1':
-        models,data,errors=find_data(version=version)          
+        models,data,errors=find_data(version=version)         
     #also error/offset file if exist    
     #last in list is newest 
     new_real=pd.read_csv(data[-1],delimiter=';')
-    power_newest=prepare_input(new_real,newest=newest,old=old,version=version,str_convert=True)
+    power_newest=prepare_input2(new_real,new_level=new_level,version=version,str_convert=True)
+    #apply prediction
+    prediction_newest,y,mo,d,h,mi=predict_from_now(power_newest.loc[power_newest.shape[0]-3:power_newest.shape[0],:],models[:],errors,silent=silent,version=version)
+    #clean prediction
+    prediction_newest=clean_prediction(prediction_newest,y,mo,d,h,mi,silent=silent,mode=mode,version=version)
+    #plot prediction
+    plot_prediction(power_newest.iloc[:,:],prediction_newest,plot_error=plot_error)
+ 
+#now hidden parameters for d_easter1 model 
+#parameter, version of models, whetehr process is printed, whether error is used in Figure
+def pipeline_v3b(version='d_easter1',silent=True,plot_error=False,mode='quadratic1',new_level=2):
+    #get model and data file lists
+    if version=='y_fraction1':
+        models,data=find_data(version=version)
+        #create dummy errors to simplyfy prediction below
+        errors=np.zeros((3,len(models)))
+        #create non zero error to avoid error problem
+        errors[1]=1.
+    elif version=='d_easter1':
+        models,data,errors=find_data(version=version)   
+    elif version=='d_march1':
+        models,data,errors=find_data(version=version)         
+    #also error/offset file if exist    
+    #last in list is newest 
+    new_real=pd.read_csv(data[-1],delimiter=';')
+    power_newest=prepare_input2(new_real,new_level=new_level,version=version,str_convert=True)
     #apply prediction
     prediction_newest,y,mo,d,h,mi=predict_from_now(power_newest.loc[power_newest.shape[0]-3:power_newest.shape[0],:],models[:],errors,silent=silent,version=version)
     #clean prediction
@@ -825,6 +851,32 @@ def pipeline_v3(version='d_march1',silent=True,plot_error=False,mode='quadratic1
     
 #now hidden parameters for y_fraction1 model 
 #parameter, version of models, whetehr process is printed, whether error is used in Figure
+def pipeline_v3c(version='y_fraction1',silent=True,plot_error=False,mode='quadratic1',new_level=2):
+    #get model and data file lists
+    if version=='y_fraction1':
+        models,data=find_data(version=version)
+        #create dummy errors to simplyfy prediction below
+        errors=np.zeros((3,len(models)))
+        #create non zero error to avoid error problem
+        errors[1]=1.
+    elif version=='d_easter1':
+        models,data,errors=find_data(version=version)   
+    elif version=='d_march1':
+        models,data,errors=find_data(version=version)         
+    #also error/offset file if exist    
+    #last in list is newest 
+    new_real=pd.read_csv(data[-1],delimiter=';')
+    power_newest=prepare_input2(new_real,new_level=new_level,version=version,str_convert=True)
+    #apply prediction
+    prediction_newest,y,mo,d,h,mi=predict_from_now(power_newest.loc[power_newest.shape[0]-3:power_newest.shape[0],:],models[:],errors,silent=silent,version=version)
+    #clean prediction
+    prediction_newest=clean_prediction(prediction_newest,y,mo,d,h,mi,silent=silent,mode=mode,version=version)
+    #plot prediction
+    plot_prediction(power_newest.iloc[:,:],prediction_newest,plot_error=plot_error)
+    
+#now hidden parameters for y_fraction1 model 
+#parameter, version of models, whetehr process is printed, whether error is used in Figure
+#does not work currently because if changes in version of data 
 def pipeline_v1(version='y_fraction1',silent=True,plot_error=False,mode='quadratic1'):
     #get model and data file lists
     if version=='y_fraction1':
@@ -848,3 +900,93 @@ def pipeline_v1(version='y_fraction1',silent=True,plot_error=False,mode='quadrat
     prediction_newest=clean_prediction(prediction_newest,y,mo,d,h,mi,silent=silent,mode=mode,version=version)
     #plot prediction
     plot_prediction(power_newest.iloc[:,:],prediction_newest,plot_error=plot_error)    
+
+#new version easier to update column nature 
+def prepare_input2(df,pump=False,end=False,bad_cut=0.9,zero_time=(2015,1,1,0,0),str_convert=True,version='y_fraction1',new_level=0):
+    #zero time of model can change later
+    zero=datetime(zero_time[0],zero_time[1],zero_time[2],zero_time[3],zero_time[4])
+    if new_level==0:
+        dic1={'Datum':'Date','Uhrzeit':'Time','Gesamt (Netzlast)[MWh]':'total_power','Residuallast[MWh]':'residual_power','Pumpspeicher[MWh]':'pump_storage'}
+        df.rename(columns=dic1,inplace=True)
+    #new column names
+    elif new_level==1:
+        dic2={'Datum':'Date','Anfang':'Time','Gesamt (Netzlast) [MWh] Originalauflösungen':'total_power','Residuallast [MWh] Originalauflösungen':'residual_power','Pumpspeicher [MWh] Originalauflösungen':'pump_storage'}
+        df.rename(columns=dic2,inplace=True)   
+    elif new_level==2:
+        dic3={'Datum von':'date_time','Datum bis':'date_time_end','Gesamt (Netzlast) [MWh] Originalauflösungen':'total_power','Residuallast [MWh] Originalauflösungen':'residual_power','Pumpspeicher [MWh] Originalauflösungen':'pump_storage'}
+        df.rename(columns=dic3,inplace=True)     
+    #drop columns
+    if end==True and new_level<2:
+        df.drop(['Ende'], axis=1, inplace=True)
+    if end==True and new_level==2:
+        df.drop(['date_time_end'], axis=1, inplace=True)        
+    #cpnvert german float to english 
+    if str_convert==True:
+        df['residual_power'] =df['residual_power'].astype(str)
+        df['residual_power'] = df['residual_power'].str.replace('.','')
+        df['residual_power'] = df['residual_power'].str.replace('-','0')
+        df['residual_power'] = df['residual_power'].str.replace(',','.').astype(float)/1000.
+        df['total_power'] =df['total_power'].astype(str)
+        df['total_power'] = df['total_power'].str.replace('.','')
+        df['total_power'] = df['total_power'].str.replace('-','0')    
+        df['total_power'] = df['total_power'].str.replace(',','.').astype(float)/1000.
+        if pump==True:
+            df['pump_storage'] =df['pump_storage'].astype(str)
+            df['pump_storage'] = df['pump_storage'].str.replace('.','')
+            df['pump_storage'] = df['pump_storage'].str.replace(',','.').astype(float)/1000.       
+    #old not combined date and time         
+    if new_level<2:        
+        df['date_time']=pd.to_datetime(df['Date'] + '.' + df['Time'], format='%d.%m.%Y.%H:%M')
+    #new is combined     
+    elif new_level==2:
+        df['date_time']=pd.to_datetime(df['date_time'], format='%d.%m.%Y %H:%M')
+    delta=str(df.loc[0,'date_time']-zero)
+    #deltam=time.strftime(delta,'%M')
+    days=delta.split(' days ')
+    hour=days[1].split(':')
+    #difference in fraction of days
+    diff_frac=float(days[0])+float(hour[0])/24+float(hour[1])/24/60
+    time1=np.zeros((df.shape[0],5))
+    for i in range(df.shape[0]):
+        time1[i,0]=diff_frac+i/4/24
+        time1[i,1]=time1[i,0]%1
+        time1[i,2]=(time1[i,0]%7)/7
+        time1[i,3]=(time1[i,0]%365.25)/365.25
+        time1[i,4]=i/4/24/365.25      
+    df['frac_day']=time1[:,1]
+    df['frac_week']=time1[:,2]
+    df['frac_year']=time1[:,3]
+    #works at least for full days, later more checks 
+    #helper parameter used below
+    df['year']=df.date_time.dt.year.astype(int)
+    df['month']=df.date_time.dt.month.astype(int)
+    #days from easter of this year
+    df['delta_easter']=0
+    #days from first march of the year, gest holidayts right given leap years
+    df['delta_march']=0
+    #works at least for full days, later more checks 
+    for i in range(df.shape[0]):
+        df['delta_easter'].iloc[i]=(df['date_time'].iloc[i]-pd.to_datetime(easter(df.year.iloc[i]))).days
+        if df.month.iloc[i]<2.5:
+            df['delta_march'].iloc[i]=(df['date_time'].iloc[i]-datetime(df['year'].iloc[i]-1,3,1)).days
+        else:
+            df['delta_march'].iloc[i]=(df['date_time'].iloc[i]-datetime(df['year'].iloc[i],3,1)).days            
+    #exclude what is zero at the end
+    c=0
+    while df.loc[df.shape[0]+c-1,'total_power']==0:
+        c-=1
+    #interpolate linear bad value (only exatcly 0 for now) which are not at the beginning or end 
+    for i in range(1,df.shape[0]+c-2):
+        if df.loc[i,'total_power']==0:
+            df.loc[i,'total_power']=(df.loc[i-1,'total_power']+df.loc[i+1,'total_power'])/2    
+    #return of the the needed columns in the right order, and dleta when last is likely bad
+    delta=0                   
+    if df.loc[df.shape[0]+c-1,'total_power']/df.loc[df.shape[0]+c-2,'total_power']<bad_cut:
+        delta=-1
+    #return needed output, order matters    
+    if version=='y_fraction1':    
+        return df.loc[:df.shape[0]+c-1+delta,['total_power','frac_day', 'frac_week', 'frac_year','date_time']]
+    elif version=='d_easter1':    
+        return df.loc[:df.shape[0]+c-1+delta,['frac_day','frac_week','delta_easter','total_power','date_time']] 
+    elif version=='d_march1':    
+        return df.loc[:df.shape[0]+c-1+delta,['frac_day','frac_week','delta_march','total_power','date_time']]    
